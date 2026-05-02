@@ -17,9 +17,9 @@
 bool connectToWiFi();
 bool readWifiCredentialsFromSD();
 bool readSerialFromSD();
-int readDHT11Sensor();
-int readDHT22Sensor();
-void sleep();
+uint8_t readDHT11Sensor();
+float readDHT22Sensor();
+void gotoSleep();
 
 // variable definitionms
 
@@ -106,13 +106,11 @@ void loop() {
 
   if (readDHT11Sensor() != SimpleDHTErrSuccess) {
     Serial.println("Fehler beim Lesen des DHT11-Sensors. Überspringe diesen Zyklus.");
-    sleep();
     return;
   }
 
   if (readDHT22Sensor != SimpleDHTErrSuccess) {
     Serial.println("Fehler beim Lesen des DHT22-Sensors. Überspringe diesen Zyklus.");
-    sleep();
     return;
   }
 
@@ -174,14 +172,15 @@ void loop() {
   // } else {
   //   Serial.println("Konnte keine WLAN-Verbindung herstellen. Überspringe POST-Anfrage.");
   // }
+  gotoSleep();
 }
 
 
 
-int readDHT11Sensor() 
+byte readDHT11Sensor() 
 {
   int err = SimpleDHTErrSuccess;
-  if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+  if ((err = dht11.read(&dht11_temperature, &dht11_humidity, NULL)) != SimpleDHTErrSuccess) {
     Serial.print("Read DHT11 failed, err="); 
     Serial.print(SimpleDHTErrCode(err));
     Serial.print(","); 
@@ -198,7 +197,7 @@ int readDHT11Sensor()
   return err;
 }
 
-int readDHT22Sensor() 
+float readDHT22Sensor() 
 {
   int err = SimpleDHTErrSuccess;
   if ((err = dht22.read2(&dht22_temperature, &dht22_humidity, NULL)) != SimpleDHTErrSuccess) {
@@ -206,8 +205,6 @@ int readDHT22Sensor()
     Serial.print(SimpleDHTErrCode(err));
     Serial.print(","); 
     Serial.println(SimpleDHTErrDuration(err)); 
-    delay(2000);
-    return;
   } else {
     Serial.print("DHT 22 sample OK: ");
     Serial.print((float) dht22_temperature); 
@@ -257,4 +254,24 @@ bool readSerialFromSD()
 void gotoSleep() {
   Serial.println("Starte Schlafmodus. ");
   esp_deep_sleep_start();
+}
+
+bool connectToWiFi() {
+  Serial.println("Versuche WLAN-Verbindung herzustellen...");
+  WiFi.begin(ssid_from_sd.c_str(), password_from_sd.c_str());
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < MAX_WIFI_ATTEMPTS) {
+    delay(100);
+    Serial.print(".");
+    attempts++;
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWLAN verbunden!");
+    Serial.print("IP-Adresse: ");
+    Serial.println(WiFi.localIP());
+    return true;
+  } else {
+    Serial.println("\nWLAN-Verbindungsversuch fehlgeschlagen.");
+    return false;
+  }
 }
